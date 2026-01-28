@@ -77,7 +77,7 @@ func RunBuild(buildParams BuildParams, imageRegistry ImageRegistry) error {
 // May return a non-nil container even if an error occurs. In that case, the caller
 // should clean up the container before failing.
 func setupBuildContainer(buildParams BuildParams, imageRegistry ImageRegistry) (*TestRunnerContainer, error) {
-	container := NewBuildCliRunnerContainer("kbc-build", BuildImage)
+	container := NewBuildCliRunnerContainer("kbc-build", BuildImage, "")
 	container.AddVolumeWithOptions(buildParams.Context, "/workspace", "z")
 	container.AddVolumeWithOptions(containerStoragePath, "/var/lib/containers", "z")
 

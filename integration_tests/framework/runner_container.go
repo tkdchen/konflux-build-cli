@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	ResultsPathInContainer = "/tmp/"
+	ResultsPathInContainer    = "/tmp/"
+	TaskRunnerDockerConfigDir = "/home/taskuser/.docker"
 )
 
 type ContainerStatus int
@@ -25,39 +26,43 @@ const (
 type TestRunnerContainer struct {
 	ReplaceEntrypoint bool
 
-	name       string
-	image      string
-	workdir    string
-	privileged bool
-	env        map[string]string
-	volumes    map[string]string
-	ports      map[string]string
-	networks   []string
-	results    map[string]string
+	name            string
+	image           string
+	workdir         string
+	privileged      bool
+	env             map[string]string
+	volumes         map[string]string
+	ports           map[string]string
+	networks        []string
+	results         map[string]string
+	dockerConfigDir string
 
 	executor cliWrappers.CliExecutorInterface
 
 	containerStatus ContainerStatus
 }
 
-func NewTestRunnerContainer(name, image string) *TestRunnerContainer {
+// NewTestRunnerContainer initiates an object of TestRunnerContainer with name, image and optional docker config directory.
+// Docker config directory defaults to /root/.docker if an empty string is passed to argument dockerConfigDir.
+func NewTestRunnerContainer(name, image, dockerConfigDir string) *TestRunnerContainer {
 	return &TestRunnerContainer{
 		ReplaceEntrypoint: true,
 
-		executor: cliWrappers.NewCliExecutor(),
-		name:     name,
-		image:    image,
-		env:      make(map[string]string),
-		volumes:  make(map[string]string),
-		ports:    make(map[string]string),
-		results:  make(map[string]string),
+		executor:        cliWrappers.NewCliExecutor(),
+		name:            name,
+		image:           image,
+		env:             make(map[string]string),
+		volumes:         make(map[string]string),
+		ports:           make(map[string]string),
+		results:         make(map[string]string),
+		dockerConfigDir: dockerConfigDir,
 	}
 }
 
 // NewBuildCliRunnerContainer creates NewTestRunnerContainer
 // with additional settings for running the Build CLI.
-func NewBuildCliRunnerContainer(name, image string) *TestRunnerContainer {
-	container := NewTestRunnerContainer(name, image)
+func NewBuildCliRunnerContainer(name, image, dockerConfigDir string) *TestRunnerContainer {
+	container := NewTestRunnerContainer(name, image, dockerConfigDir)
 
 	container.AddVolumeWithOptions(GetCliBinPath(), path.Join("/usr/bin/", KonfluxBuildCli), "z")
 	container.AddNetwork("host")
@@ -311,7 +316,10 @@ func (c *TestRunnerContainer) InjectDockerAuth(registry, login, password string)
 	}
 	defer func() { os.Remove(filePath) }()
 
-	dockerDir := "/root/.docker"
+	dockerDir := c.dockerConfigDir
+	if c.dockerConfigDir == "" {
+		dockerDir = "/root/.docker"
+	}
 	if err := c.ExecuteCommand("mkdir", "-p", dockerDir); err != nil {
 		return err
 	}
